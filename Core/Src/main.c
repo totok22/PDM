@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "pdm_monitor.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -119,7 +119,9 @@ int main(void)
       Error_Handler();
     }
 
-    // 注意：因为您需要接收数据，所以在此处不需要调用 HAL_CAN_ActivateNotification 开启接收中断。
+    // 注意：因为不需要接收数据，所以在此处不需要调用 HAL_CAN_ActivateNotification 开启接收中断。
+
+    PDM_Monitor_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -129,6 +131,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    PDM_Monitor_Update();
   }
   /* USER CODE END 3 */
 }
