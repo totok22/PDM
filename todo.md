@@ -1,0 +1,1 @@
+- 阅读Doc下的文档Doc\硬件信息.md以及Reference\STM32CubeF1仓库使用说明.md、Reference\ina226仓库使用建议.md。
