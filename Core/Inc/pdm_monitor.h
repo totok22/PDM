@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 typedef struct {
+    uint8_t online;
     float voltage_mV;
     float current_mA;
     float power_mW;

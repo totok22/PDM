@@ -83,18 +83,32 @@ static void read_channel(ina226_handle_t *h, pdm_channel_t *ch, float dt_h)
     uint16_t raw_v, raw_p;
     int16_t raw_i;
     float v, i, p;
+    uint8_t success = 1;
 
     if (ina226_read_bus_voltage(h, &raw_v, &v) == 0)
         ch->voltage_mV = v;
+    else
+        success = 0;
 
     if (ina226_read_current(h, &raw_i, &i) == 0)
         ch->current_mA = i;
+    else
+        success = 0;
 
     if (ina226_read_power(h, &raw_p, &p) == 0)
     {
         ch->power_mW = p;
         ch->energy_mWh += ch->power_mW * dt_h;
+        if (ch->energy_mWh >= 655360.0f) {
+            ch->energy_mWh -= 655360.0f;
+        }
     }
+    else
+    {
+        success = 0;
+    }
+    
+    ch->online = success;
 }
 
 /* --- Send one CAN frame --- */
@@ -117,26 +131,39 @@ static void send_can_frame(uint32_t id, pdm_channel_t *ch)
     hdr.DLC = 8;
     hdr.TransmitGlobalTime = DISABLE;
 
-    /* Saturating casts */
-    float v_mv = ch->voltage_mV;
-    if (v_mv > 32767.0f) v_mv = 32767.0f;
-    if (v_mv < -32768.0f) v_mv = -32768.0f;
-    int16_t voltage = (int16_t)v_mv;
+    int16_t voltage, current;
+    uint16_t power, energy;
 
-    float i_scaled = ch->current_mA / 10.0f;
-    if (i_scaled > 32767.0f) i_scaled = 32767.0f;
-    if (i_scaled < -32768.0f) i_scaled = -32768.0f;
-    int16_t current = (int16_t)i_scaled;
+    if (ch->online)
+    {
+        /* Saturating casts */
+        float v_mv = ch->voltage_mV;
+        if (v_mv > 32767.0f) v_mv = 32767.0f;
+        if (v_mv < -32768.0f) v_mv = -32768.0f;
+        voltage = (int16_t)v_mv;
 
-    float p_scaled = ch->power_mW / 100.0f;
-    if (p_scaled > 65535.0f) p_scaled = 65535.0f;
-    if (p_scaled < 0.0f) p_scaled = 0.0f;
-    uint16_t power = (uint16_t)p_scaled;
+        float i_scaled = ch->current_mA / 10.0f;
+        if (i_scaled > 32767.0f) i_scaled = 32767.0f;
+        if (i_scaled < -32768.0f) i_scaled = -32768.0f;
+        current = (int16_t)i_scaled;
 
-    float e_scaled = ch->energy_mWh / 10.0f;
-    if (e_scaled > 65535.0f) e_scaled = 65535.0f;
-    if (e_scaled < 0.0f) e_scaled = 0.0f;
-    uint16_t energy = (uint16_t)e_scaled;
+        float p_scaled = ch->power_mW / 100.0f;
+        if (p_scaled > 65535.0f) p_scaled = 65535.0f;
+        if (p_scaled < 0.0f) p_scaled = 0.0f;
+        power = (uint16_t)p_scaled;
+
+        float e_scaled = ch->energy_mWh / 10.0f;
+        if (e_scaled > 65535.0f) e_scaled = 65535.0f;
+        if (e_scaled < 0.0f) e_scaled = 0.0f;
+        energy = (uint16_t)e_scaled;
+    }
+    else
+    {
+        voltage = 0x7FFF;
+        current = 0x7FFF;
+        power = 0xFFFF;
+        energy = 0xFFFF;
+    }
 
     data[0] = (uint8_t)(voltage >> 8);
     data[1] = (uint8_t)(voltage & 0xFF);
@@ -215,15 +242,13 @@ void PDM_Monitor_Update(void)
             g_ch_bat.power_mW, g_ch_bat.energy_mWh);
     }
 
-    /* Alert handling */
+    /* Alert handling (disabled as per requirement) */
     if (g_alert1_flag)
     {
         g_alert1_flag = 0;
-        ina226_irq_handler(&g_ina226_bus);
     }
     if (g_alert2_flag)
     {
         g_alert2_flag = 0;
-        ina226_irq_handler(&g_ina226_bat);
     }
 }

@@ -16,11 +16,11 @@ uint8_t ina226_interface_iic_deinit(void)
 
 uint8_t ina226_interface_iic_read(uint8_t addr, uint8_t reg, uint8_t *buf, uint16_t len)
 {
-    if (HAL_I2C_Master_Transmit(&hi2c1, addr, &reg, 1, 100) != HAL_OK)
+    if (HAL_I2C_Master_Transmit(&hi2c1, addr, &reg, 1, 10) != HAL_OK)
     {
         return 1;
     }
-    if (HAL_I2C_Master_Receive(&hi2c1, addr, buf, len, 100) != HAL_OK)
+    if (HAL_I2C_Master_Receive(&hi2c1, addr, buf, len, 10) != HAL_OK)
     {
         return 1;
     }
@@ -39,7 +39,7 @@ uint8_t ina226_interface_iic_write(uint8_t addr, uint8_t reg, uint8_t *buf, uint
     {
         tmp[1 + i] = buf[i];
     }
-    if (HAL_I2C_Master_Transmit(&hi2c1, addr, tmp, (uint16_t)(1 + len), 100) != HAL_OK)
+    if (HAL_I2C_Master_Transmit(&hi2c1, addr, tmp, (uint16_t)(1 + len), 10) != HAL_OK)
     {
         return 1;
     }
@@ -60,7 +60,8 @@ void ina226_interface_debug_print(const char *const fmt, ...)
     va_end(args);
     if (len > 0)
     {
-        HAL_UART_Transmit(&huart1, (uint8_t *)buf, (uint16_t)len, 100);
+        int send_len = (len < sizeof(buf)) ? len : (sizeof(buf) - 1);
+        HAL_UART_Transmit(&huart1, (uint8_t *)buf, (uint16_t)send_len, 100);
     }
 }
 
